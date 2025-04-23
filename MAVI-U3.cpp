@@ -69,6 +69,13 @@ int main()
         ballShape.setPosition(toSFMLPos(ball->GetPosition()));
         window.draw(ballShape);
 
+        sf::Vertex line[] =
+        {
+            sf::Vertex(toSFMLPos(anchor->GetPosition()), sf::Color::White),
+            sf::Vertex(toSFMLPos(ball->GetPosition()), sf::Color::White)
+        };
+        window.draw(line, 2, sf::Lines);
+
         window.display();
     }
 
