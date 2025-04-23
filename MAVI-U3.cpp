@@ -21,12 +21,11 @@ int main()
 
     //Cajas
 
-    auto createBox = [&](float x, float y, float width, float height, bool dynamic = true) -> b2Body* 
+    auto createBox = [&](float x, float y, float width, float height) -> b2Body*
     {
         b2BodyDef bodyDef;
         bodyDef.position.Set(x, y);
-        bodyDef.type = dynamic ? b2_dynamicBody : b2_staticBody;
-
+        bodyDef.type = b2_staticBody;
         b2Body* body = world.CreateBody(&bodyDef);
 
         b2PolygonShape shape;
@@ -38,21 +37,27 @@ int main()
         fixtureDef.friction = 0.3f;
 
         body->CreateFixture(&fixtureDef);
+
         return body;
     };
 
     //Suelo
 
-    b2Body* ground = createBox(13.f, 1.f, 26.f, 2.f, false);
+    b2BodyDef groundDef;
+    groundDef.position.Set(13.f, 1.f);
+    b2Body* ground = world.CreateBody(&groundDef);
+    b2PolygonShape groundShape;
+    groundShape.SetAsBox(13.f, 1.f);
+    ground->CreateFixture(&groundShape, 0.f);
 
     //Partes/miembros del ragdoll
 
-    b2Body* torso = createBox(13.f, 5.f, 1.f, 2.f, false);
-    b2Body* head = createBox(13.f, 7.5f, 1.f, 1.f, false);
-    b2Body* leftArm = createBox(12.f, 5.f, 0.5f, 2.f, false);
-    b2Body* rightArm = createBox(14.f, 5.f, 0.5f, 2.f, false);
-    b2Body* leftLeg = createBox(12.5f, 3.f, 0.5f, 2.f, false);
-    b2Body* rightLeg = createBox(13.5f, 3.f, 0.5f, 2.f, false);
+    b2Body* torso = createBox(13.f, 5.f, 1.f, 2.f);
+    b2Body* head = createBox(13.f, 7.5f, 1.f, 1.f);
+    b2Body* leftArm = createBox(12.f, 5.f, 0.5f, 2.f);
+    b2Body* rightArm = createBox(14.f, 5.f, 0.5f, 2.f);
+    b2Body* leftLeg = createBox(12.5f, 3.f, 0.5f, 2.f);
+    b2Body* rightLeg = createBox(13.5f, 3.f, 0.5f, 2.f);
 
     std::vector<b2Body*> cuerpos = { torso, head, leftArm, rightArm, leftLeg, rightLeg };
     std::vector<b2Joint*> joints;
@@ -62,9 +67,9 @@ int main()
     struct Union 
     {
         b2Body* a;
-        b2Vec2 localAnchorA;
+        b2Vec2 AnchorA;
         b2Body* b;
-        b2Vec2 localAnchorB;
+        b2Vec2 AnchorB;
     };
 
     std::vector<Union> uniones = 
@@ -75,6 +80,22 @@ int main()
         {torso,     b2Vec2(-0.4f, -1.f), leftLeg,  b2Vec2(0.f, 1.f)},
         {torso,     b2Vec2(0.4f, -1.f),  rightLeg, b2Vec2(0.f, 1.f)}
     };
+
+    for (const auto& u : uniones)
+    {
+        b2Vec2 worldAnchorA = u.a->GetWorldPoint(u.AnchorA);
+        b2Vec2 worldAnchorB = u.b->GetWorldPoint(u.AnchorB);
+        b2Vec2 jointAnchor = 0.5f * (worldAnchorA + worldAnchorB);
+
+        b2RevoluteJointDef jointDef;
+        jointDef.bodyA = u.a;
+        jointDef.bodyB = u.b;
+        jointDef.localAnchorA = u.a->GetLocalPoint(jointAnchor);
+        jointDef.localAnchorB = u.b->GetLocalPoint(jointAnchor);
+        jointDef.collideConnected = false;
+
+        joints.push_back(world.CreateJoint(&jointDef));
+    }
 
     while (window.isOpen()) 
     {
@@ -88,16 +109,9 @@ int main()
 
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space && !activo)
             {
-                for (const auto& u : uniones)
+                for (auto body : cuerpos)
                 {
-                    b2DistanceJointDef jointDef;
-                    jointDef.bodyA = u.a;
-                    jointDef.bodyB = u.b;
-                    jointDef.localAnchorA = u.localAnchorA;
-                    jointDef.localAnchorB = u.localAnchorB;
-                    jointDef.collideConnected = false;
-
-                    joints.push_back(world.CreateJoint(&jointDef));
+                    body->SetType(b2_dynamicBody);
                 }
 
                 //Fuerza lateral al activar
@@ -138,14 +152,23 @@ int main()
         
             for (auto joint : joints) 
             {
-                b2Vec2 p1 = joint->GetAnchorA();
-                b2Vec2 p2 = joint->GetAnchorB();
-                sf::Vertex line[] = 
+                b2Body* bodyA = joint->GetBodyA();
+                b2Body* bodyB = joint->GetBodyB();
+                b2Vec2 anchor = joint->GetAnchorA();
+
+                sf::Vertex lineA[] =
                 {
-                    sf::Vertex(toSFMLPos(p1), sf::Color::White),
-                    sf::Vertex(toSFMLPos(p2), sf::Color::White)
+                    sf::Vertex(toSFMLPos(bodyA->GetPosition()), sf::Color::White),
+                    sf::Vertex(toSFMLPos(anchor), sf::Color::White)
                 };
-                window.draw(line, 2, sf::Lines);
+                window.draw(lineA, 2, sf::Lines);
+
+                sf::Vertex lineB[] =
+                {
+                    sf::Vertex(toSFMLPos(bodyB->GetPosition()), sf::Color::White),
+                    sf::Vertex(toSFMLPos(anchor), sf::Color::White)
+                };
+                window.draw(lineB, 2, sf::Lines);
             }
         
 
