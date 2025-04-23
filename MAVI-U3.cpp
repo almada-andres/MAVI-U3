@@ -40,6 +40,7 @@ int main()
     ball->CreateFixture(&fix);
 
     ball->SetLinearVelocity(b2Vec2(5.f, 0.f));      //toque para que no parezca una pelota estatica
+    ball->SetLinearDamping(0.3f);
 
     //Union pelota-punto fijo
 
