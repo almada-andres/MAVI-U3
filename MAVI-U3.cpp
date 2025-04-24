@@ -116,7 +116,7 @@ int main()
 
                 //Fuerza lateral al activar
 
-                b2Vec2 impulso(5.f, 0.f);
+                b2Vec2 impulso(40.f, 0.f);
                 torso->ApplyLinearImpulseToCenter(impulso, true);
 
                 activo = true;
